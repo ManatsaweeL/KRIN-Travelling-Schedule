@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KRIN Travelling Schedule - ตารางการเดินทาง</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Calibri', 'Segoe UI', sans-serif;
+    color: #2d3748;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #533483 100%);
+    background-attachment: fixed;
+  }
+
+  header {
+    background: linear-gradient(135deg, #2b6cb0, #2c7a7b);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  header h1 { font-size: 1.6rem; font-weight: 700; }
+  header span { font-size: 1.8rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ── Section Cards ── */
+  .card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: #ebf8ff;
+    border-bottom: 2px solid #bee3f8;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #2b6cb0; }
+  .card-body { padding: 24px; }
+
+  /* ── Form ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.82rem; font-weight: 600; color: #4a5568; text-transform: uppercase; letter-spacing: 0.04em; }
+  input, select, textarea {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+    background: #fafafa;
+    color: #2d3748;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #63b3ed; background: white; }
+  textarea { resize: vertical; min-height: 72px; }
+
+  /* ── Tags (guests) ── */
+  .tag {
+    background: #bee3f8;
+    color: #2b6cb0;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .tag.staff-tag { background: #c6f6d5; color: #276749; }
+  .tag .remove { cursor: pointer; font-weight: 700; font-size: 1rem; line-height: 1; opacity: 0.6; }
+  .tag .remove:hover { opacity: 1; }
+
+  /* ── Guest free-text input ── */
+  .guest-input-row { display: flex; gap: 8px; }
+  .guest-input-row input { flex: 1; }
+  .tags-display { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 10px; }
+  .hint { font-size: 0.75rem; color: #a0aec0; margin-top: 4px; }
+
+  /* ── Staff dropdown ── */
+  .staff-dropdown { position: relative; }
+  .staff-trigger {
+    width: 100%;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 0.95rem;
+    background: #fafafa;
+    color: #718096;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .staff-trigger:hover, .staff-trigger.open { border-color: #63b3ed; background: white; }
+  .staff-trigger .arrow { font-size: 0.7rem; transition: transform 0.2s; }
+  .staff-trigger.open .arrow { transform: rotate(180deg); }
+  .staff-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: white;
+    border: 1.5px solid #bee3f8;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    z-index: 100;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .staff-panel.open { display: block; }
+  .staff-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-size: 0.92rem;
+    transition: background 0.12s;
+  }
+  .staff-option:hover { background: #ebf8ff; }
+  .staff-option input[type=checkbox] { accent-color: #2b6cb0; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+  .staff-option.checked { background: #f0fff4; font-weight: 600; color: #276749; }
+
+
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: #2b6cb0; color: white; }
+  .btn-primary:hover { background: #2c5282; }
+  .btn-secondary { background: #e2e8f0; color: #4a5568; }
+  .btn-secondary:hover { background: #cbd5e0; }
+  .btn-danger { background: #fed7d7; color: #c53030; }
+  .btn-danger:hover { background: #feb2b2; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Trips List ── */
+  #tripsList { display: flex; flex-direction: column; gap: 5px; }
+  .trip-item {
+    border-left: 4px solid #63b3ed;
+    background: #f7fafc;
+    border-radius: 7px;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+  }
+  .trip-item:hover { background: #ebf8ff; }
+  .trip-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+  .trip-line { font-size: 0.73rem; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trip-line.date  { font-weight: 700; color: #2d3748; }
+  .trip-line.dest  { font-weight: 700; color: #2b6cb0; }
+  .trip-line.staff { color: #4a5568; }
+  .trip-line.guest { color: #718096; }
+  .trip-item .trip-actions { display: flex; gap: 3px; flex-shrink: 0; }
+  .btn-sm { padding: 2px 7px; font-size: 0.68rem; }
+  .empty-state { text-align: center; color: #a0aec0; padding: 28px; font-size: 0.95rem; }
+
+  /* ── Calendar ── */
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .cal-nav h3 { font-size: 1.15rem; font-weight: 700; }
+  .cal-nav-btns { display: flex; gap: 8px; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .cal-day-name {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #a0aec0;
+    text-transform: uppercase;
+    padding: 4px 0 8px;
+  }
+  .cal-cell {
+    min-height: 90px;
+    background: #fafafa;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 5px 6px;
+    position: relative;
+    transition: background 0.15s;
+  }
+  .cal-cell:hover { background: #ebf8ff; }
+  .cal-cell.today { border-color: #63b3ed; background: #ebf8ff; }
+  .cal-cell.other-month { background: #f7fafc; opacity: 0.55; }
+  .cal-date {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 4px;
+  }
+  .cal-cell.today .cal-date {
+    background: #2b6cb0;
+    color: white;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cal-event {
+    font-size: 0.7rem;
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin-bottom: 2px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .cal-event:hover { filter: brightness(1.1); }
+
+  /* ── Side-by-side layout ── */
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 7fr 3fr;
+    gap: 28px;
+    align-items: stretch;
+    margin-bottom: 28px;
+  }
+  .side-by-side .card { margin-bottom: 0; display: flex; flex-direction: column; }
+  .side-by-side .card .card-body { flex: 1; overflow-y: auto; }
+  #tripsList { overflow-y: auto; }
+  @media (max-width: 1000px) {
+    .side-by-side { grid-template-columns: 1fr; }
+  }
+
+  /* ── View toggle ── */
+  .view-toggle {
+    display: flex;
+    background: #e2e8f0;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .view-toggle button {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: #718096;
+    transition: background 0.15s, color 0.15s;
+  }
+  .view-toggle button.active {
+    background: white;
+    color: #2b6cb0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  /* ── Yearly grid ── */
+  .year-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 900px) { .year-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .year-grid { grid-template-columns: 1fr; } }
+
+  .mini-month { }
+  .mini-month-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #2b6cb0;
+    text-align: center;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .mini-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+  }
+  .mini-day-name {
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #a0aec0;
+    padding-bottom: 3px;
+  }
+  .mini-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    color: #4a5568;
+    position: relative;
+    cursor: default;
+  }
+  .mini-cell.other-month { color: #cbd5e0; }
+  .mini-cell.today { background: #2b6cb0; color: white; border-radius: 50%; font-weight: 700; }
+  .mini-cell.has-event { color: white; font-weight: 700; border-radius: 3px; cursor: pointer; }
+  .mini-cell.has-event:hover { filter: brightness(1.12); }
+  .mini-cell.range-start { border-radius: 50% 3px 3px 50%; }
+  .mini-cell.range-end   { border-radius: 3px 50% 50% 3px; }
+
+  /* ── Legend ── */
+  #legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 12px 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    color: #4a5568;
+    font-weight: 600;
+  }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+  }
+
+  /* ── Modal / Tooltip ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 14px;
+    max-width: 480px;
+    width: 94%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    overflow: hidden;
+    animation: popIn 0.18s ease;
+  }
+  @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header {
+    padding: 16px 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h3 { font-size: 1.05rem; font-weight: 700; }
+  .modal-close { cursor: pointer; font-size: 1.4rem; opacity: 0.85; line-height: 1; }
+  .modal-close:hover { opacity: 1; }
+  .modal-body { padding: 20px; }
+  .modal-bullet-list { list-style: disc; padding-left: 1.4em; margin: 0; }
+  .modal-bullet-list li { margin-bottom: 8px; line-height: 1.45; }
+  .modal-date-line { font-size: 1.1rem; font-weight: 700; color: #2d3748; }
+  .modal-dest-line { font-size: 1.05rem; font-weight: 700; color: #2b6cb0; }
+  .modal-detail-line { font-size: 0.95rem; color: #718096; }
+  .modal-people-line { font-size: 0.92rem; color: #4a5568; }
+
+  /* ── Staff Travel List ── */
+  .staff-travel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .staff-travel-card {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .staff-travel-card-header {
+    background: linear-gradient(135deg, #2b6cb0, #2c7a7b);
+    color: white;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .staff-trip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid #f0f4f8;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 0.85rem;
+  }
+  .staff-trip-row:last-child { border-bottom: none; }
+  .staff-trip-row:hover { background: #ebf8ff; }
+  .staff-trip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .staff-trip-dest { font-weight: 600; color: #2d3748; flex: 1; }
+  .staff-trip-dates { font-size: 0.75rem; color: #718096; white-space: nowrap; }
+  .window-label {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 14px;
+    padding: 7px 12px;
+    background: #f7fafc;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .cal-cell { min-height: 60px; }
+    .cal-event { display: none; }
+    .cal-cell.has-event::after {
+      content: '';
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #2b6cb0;
+      margin: 2px auto 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span>✈️</span>
+  <h1>KRIN Travelling Schedule - ตารางการเดินทาง</h1>
+</header>
+
+<div class="container">
+
+  <div class="side-by-side">
+
+    <!-- ── CALENDAR ── -->
+    <div class="card">
+      <div class="card-header">
+        <span>📅</span>
+        <h2 id="calCardTitle">Calendar Overview</h2>
+      </div>
+      <div class="card-body">
+        <div class="cal-nav">
+          <div class="cal-nav-btns">
+            <button class="btn btn-secondary btn-sm" id="prevBtn" onclick="calPrev()">&#8249; Prev</button>
+            <button class="btn btn-secondary btn-sm" onclick="goToday()">Today</button>
+            <button class="btn btn-secondary btn-sm" id="nextBtn" onclick="calNext()">Next &#8250;</button>
+          </div>
+          <h3 id="calMonthLabel"></h3>
+          <div class="view-toggle">
+            <button id="btnMonthly" onclick="setView('monthly')">Monthly</button>
+            <button id="btnYearly" class="active" onclick="setView('yearly')">Yearly</button>
+          </div>
+        </div>
+        <div id="legend"></div>
+        <div id="calGrid"></div>
+      </div>
+    </div>
+
+    <!-- ── TRIPS LIST ── -->
+    <div class="card">
+      <div class="card-header">
+        <span>🗂️</span>
+        <h2>All Travel Entries</h2>
+      </div>
+      <div class="card-body">
+        <div id="tripsList"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── ENTRY FORM ── -->
+  <div class="card" id="entryCard">
+    <div class="card-header">
+      <span>📝</span>
+      <h2 id="formTitle">Add Travel Entry</h2>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Start Date *</label>
+          <input type="text" id="startDate" placeholder="Select start date…" readonly required>
+        </div>
+
+        <div class="form-group">
+          <label>End Date *</label>
+          <input type="text" id="endDate" placeholder="Select end date…" readonly required>
+        </div>
+
+        <div class="form-group full">
+          <label>Destination *</label>
+          <input type="text" id="destination" placeholder="e.g. Tokyo, Japan" required>
+        </div>
+
+        <div class="form-group full">
+          <label>Details / Purpose</label>
+          <textarea id="details" placeholder="Conference, client meeting, team offsite…"></textarea>
+        </div>
+
+        <div class="form-group full">
+          <label>Staff Name(s)</label>
+          <div class="staff-dropdown" id="staffDropdown">
+            <button type="button" class="staff-trigger" id="staffTrigger" onclick="toggleStaffPanel()">
+              <span id="staffTriggerLabel">Select staff…</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div class="staff-panel" id="staffPanel"></div>
+          </div>
+          <div class="tags-display" id="staffTags"></div>
+        </div>
+
+        <div class="form-group full">
+          <label>Guests</label>
+          <div class="guest-input-row">
+            <input type="text" id="guestInput" placeholder="Type guest name…">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addGuest()">Add</button>
+          </div>
+          <div class="tags-display" id="guestTags"></div>
+          <span class="hint">Press Enter or click Add after each name</span>
+        </div>
+
+
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="resetForm()">Clear</button>
+        <button class="btn btn-primary" onclick="saveTrip()">💾 Save Trip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STAFF TRAVEL LIST ── -->
+  <div class="card">
+    <div class="card-header">
+      <span>👤</span>
+      <h2>Upcoming Travel by Staff (Next 3 Months)</h2>
+    </div>
+    <div class="card-body">
+      <div id="staffTravelWindow" class="window-label"></div>
+      <div id="staffTravelList"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── EVENT MODAL ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header" id="modalHeader">
+      <h3 id="modalTitle"></h3>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <ul class="modal-bullet-list" id="modalBullets"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────
+//  State
+// ──────────────────────────────────────────────────────────────
+let trips = [];
+let editingId = null;
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
+let selectedStaff = [];   // names chosen from dropdown
+let guestList    = [];    // free-text guest names
+
+const AUTO_COLORS = [
+  '#e53e3e','#3182ce','#38a169','#d69e2e','#805ad5',
+  '#dd6b20','#319795','#d53f8c','#2b6cb0','#276749',
+  '#c05621','#553c9a'
+];
+
+function autoColor() {
+  return AUTO_COLORS[trips.length % AUTO_COLORS.length];
+}
+
+const STAFF_LIST = [
+  "Big", "Bill", "Chang", "Faster", "Fern",
+  "Golf", "Phum", "Sai", "San", "Top", "Tui", "Victor"
+];
+
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ──────────────────────────────────────────────────────────────
+//  Persistence
+// ──────────────────────────────────────────────────────────────
+async function loadTrips() {
+  try {
+    const res = await fetch('/api/trips');
+    trips = await res.json();
+  } catch (e) {
+    trips = [];
+  }
+  renderTripsList();
+  renderCalendar();
+  renderStaffTravel();
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Staff dropdown
+// ──────────────────────────────────────────────────────────────
+function buildStaffPanel() {
+  const panel = document.getElementById('staffPanel');
+  panel.innerHTML = STAFF_LIST.map(name => `
+    <label class="staff-option ${selectedStaff.includes(name) ? 'checked' : ''}" id="opt-${CSS.escape(name)}">
+      <input type="checkbox" ${selectedStaff.includes(name) ? 'checked' : ''}
+             onchange="toggleStaffMember('${esc(name)}')">
+      ${esc(name)}
+    </label>
+  `).join('');
+}
+
+function toggleStaffPanel() {
+  const panel   = document.getElementById('staffPanel');
+  const trigger = document.getElementById('staffTrigger');
+  const isOpen  = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    trigger.classList.remove('open');
+  } else {
+    buildStaffPanel();
+    panel.classList.add('open');
+    trigger.classList.add('open');
+  }
+}
+
+function toggleStaffMember(name) {
+  const idx = selectedStaff.indexOf(name);
+  if (idx === -1) selectedStaff.push(name);
+  else selectedStaff.splice(idx, 1);
+  buildStaffPanel();
+  renderStaffTags();
+  updateStaffTriggerLabel();
+}
+
+function updateStaffTriggerLabel() {
+  const lbl = document.getElementById('staffTriggerLabel');
+  lbl.textContent = selectedStaff.length
+    ? selectedStaff.join(', ')
+    : 'Select staff…';
+  lbl.style.color = selectedStaff.length ? '#2d3748' : '';
+}
+
+function renderStaffTags() {
+  const container = document.getElementById('staffTags');
+  container.innerHTML = selectedStaff.map((name, i) => `
+    <span class="tag staff-tag">${esc(name)}
+      <span class="remove" onclick="removeStaff(${i})">×</span>
+    </span>
+  `).join('');
+}
+
+function removeStaff(idx) {
+  selectedStaff.splice(idx, 1);
+  buildStaffPanel();
+  renderStaffTags();
+  updateStaffTriggerLabel();
+}
+
+// close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!document.getElementById('staffDropdown').contains(e.target)) {
+    document.getElementById('staffPanel').classList.remove('open');
+    document.getElementById('staffTrigger').classList.remove('open');
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+//  Guest free-text input
+// ──────────────────────────────────────────────────────────────
+function addGuest() {
+  const input = document.getElementById('guestInput');
+  const val   = input.value.trim();
+  if (val && !guestList.includes(val)) {
+    guestList.push(val);
+    renderGuestTags();
+  }
+  input.value = '';
+  input.focus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('guestInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addGuest(); }
+  });
+});
+
+function renderGuestTags() {
+  const container = document.getElementById('guestTags');
+  container.innerHTML = guestList.map((name, i) => `
+    <span class="tag">${esc(name)}
+      <span class="remove" onclick="removeGuest(${i})">×</span>
+    </span>
+  `).join('');
+}
+
+function removeGuest(idx) {
+  guestList.splice(idx, 1);
+  renderGuestTags();
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Color picker
+
+// ──────────────────────────────────────────────────────────────
+//  Form save / edit / delete
+// ──────────────────────────────────────────────────────────────
+async function saveTrip() {
+  const start = document.getElementById('startDate').value;
+  const end   = document.getElementById('endDate').value;
+  const dest  = document.getElementById('destination').value.trim();
+  if (!start || !end || !dest) { alert('Start date, end date and destination are required.'); return; }
+  if (start > end) { alert('End date must be on or after start date.'); return; }
+
+  const trip = {
+    id:      editingId || Date.now().toString(),
+    start, end, dest,
+    details: document.getElementById('details').value.trim(),
+    staff:   [...selectedStaff],
+    guests:  [...guestList],
+    color:   editingId ? trips.find(t => t.id === editingId).color : autoColor()
+  };
+
+  if (editingId) {
+    await fetch(`/api/trips/${editingId}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(trip)
+    });
+  } else {
+    await fetch('/api/trips', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(trip)
+    });
+  }
+
+  resetForm();
+  await loadTrips();
+}
+
+function editTrip(id) {
+  const t = trips.find(t => t.id === id);
+  if (!t) return;
+  editingId = id;
+  fpStart.setDate(t.start);
+  fpEnd.setDate(t.end);
+  document.getElementById('destination').value = t.dest;
+  document.getElementById('details').value     = t.details;
+  selectedStaff = [...t.staff];
+  guestList     = [...t.guests];
+  renderStaffTags();
+  updateStaffTriggerLabel();
+  renderGuestTags();
+  document.getElementById('formTitle').textContent = 'Edit Travel Entry';
+  document.getElementById('entryCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function deleteTrip(id) {
+  if (!confirm('Delete this travel entry?')) return;
+  if (editingId === id) { editingId = null; resetForm(); }
+  await fetch(`/api/trips/${id}`, { method: 'DELETE' });
+  await loadTrips();
+}
+
+function resetForm() {
+  fpStart.clear(); fpEnd.clear();
+  ['destination','details'].forEach(id => document.getElementById(id).value = '');
+  selectedStaff = []; guestList = [];
+  renderStaffTags();
+  updateStaffTriggerLabel();
+  renderGuestTags();
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Add Travel Entry';
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Trips list
+// ──────────────────────────────────────────────────────────────
+function fmtShort(dateStr) {
+  const [,m,d] = dateStr.split('-');
+  return `${parseInt(d,10)} ${MONTHS[parseInt(m,10)-1].slice(0,3)}`;
+}
+
+function renderTripsList() {
+  const el = document.getElementById('tripsList');
+  if (!trips.length) {
+    el.innerHTML = '<div class="empty-state">No travel entries yet.</div>';
+    return;
+  }
+  const sorted = [...trips].sort((a,b) => a.start.localeCompare(b.start));
+  el.innerHTML = sorted.map(t => `
+    <div class="trip-item" style="border-left-color:${t.color}">
+      <div class="trip-info">
+        <div class="trip-line date">📅 ${fmtShort(t.start)} – ${fmtShort(t.end)}</div>
+        <div class="trip-line dest">✈️ ${esc(t.dest)}</div>
+        ${t.staff.length  ? `<div class="trip-line staff">👤 ${[...t.staff].sort().map(esc).join(', ')}</div>` : ''}
+        ${t.guests.length ? `<div class="trip-line guest">🤝 ${t.guests.map(esc).join(', ')}</div>` : ''}
+      </div>
+      <div class="trip-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTrip('${t.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTrip('${t.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Calendar — view state
+// ──────────────────────────────────────────────────────────────
+let calView = 'yearly'; // 'monthly' | 'yearly'
+
+function setView(v) {
+  calView = v;
+  document.getElementById('btnMonthly').classList.toggle('active', v === 'monthly');
+  document.getElementById('btnYearly').classList.toggle('active',  v === 'yearly');
+  renderCalendar();
+}
+
+function calPrev() {
+  if (calView === 'monthly') { currentMonth--; if (currentMonth < 0)  { currentMonth = 11; currentYear--; } }
+  else { currentYear--; }
+  renderCalendar();
+}
+
+function calNext() {
+  if (calView === 'monthly') { currentMonth++; if (currentMonth > 11) { currentMonth = 0;  currentYear++; } }
+  else { currentYear++; }
+  renderCalendar();
+}
+
+function goToday() {
+  const now = new Date();
+  currentYear  = now.getFullYear();
+  currentMonth = now.getMonth();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  if (calView === 'yearly') renderYearly();
+  else                      renderMonthly();
+}
+
+// ── Monthly view ──────────────────────────────────────────────
+function renderMonthly() {
+  document.getElementById('calCardTitle').textContent  = 'Monthly Calendar Overview';
+  document.getElementById('calMonthLabel').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+
+  const grid  = document.getElementById('calGrid');
+  const today = new Date().toISOString().slice(0,10);
+
+  let html = `<div class="cal-grid">`;
+  html += DAYS.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const prevLast = new Date(currentYear, currentMonth, 0).getDate();
+
+  const monthStart = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-01`;
+  const monthEnd   = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(lastDate).padStart(2,'0')}`;
+  const visible    = trips.filter(t => t.start <= monthEnd && t.end >= monthStart);
+
+  let cells = [];
+  for (let i = 0; i < firstDay; i++)
+    cells.push({ date: `prev-${i}`, day: prevLast - firstDay + 1 + i, other: true });
+  for (let d = 1; d <= lastDate; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells.push({ date: dateStr, day: d, other: false });
+  }
+  for (let i = 1; i <= 42 - cells.length; i++)
+    cells.push({ date: `next-${i}`, day: i, other: true });
+
+  cells.forEach(cell => {
+    const isToday    = cell.date === today;
+    const eventsHere = cell.other ? [] : visible.filter(t => t.start <= cell.date && t.end >= cell.date);
+    html += `<div class="cal-cell ${isToday?'today':''} ${cell.other?'other-month':''} ${eventsHere.length?'has-event':''}">
+      <div class="cal-date">${cell.day}</div>
+      ${eventsHere.map(t => `
+        <div class="cal-event" style="background:${t.color}" onclick="showModal('${t.id}')" title="${esc(t.dest)}">
+          ${esc(t.dest)}
+        </div>`).join('')}
+    </div>`;
+  });
+
+  html += `</div>`;
+  grid.innerHTML = html;
+  renderLegend(visible);
+}
+
+// ── Yearly view ───────────────────────────────────────────────
+function renderYearly() {
+  document.getElementById('calCardTitle').textContent  = 'Yearly Calendar Overview';
+  document.getElementById('calMonthLabel').textContent = `${currentYear}`;
+
+  const today      = new Date().toISOString().slice(0,10);
+  const yearStart  = `${currentYear}-01-01`;
+  const yearEnd    = `${currentYear}-12-31`;
+  const visible    = trips.filter(t => t.start <= yearEnd && t.end >= yearStart);
+
+  let html = `<div class="year-grid">`;
+
+  for (let m = 0; m < 12; m++) {
+    const mm       = String(m + 1).padStart(2,'0');
+    const lastDate = new Date(currentYear, m + 1, 0).getDate();
+    const firstDay = new Date(currentYear, m, 1).getDay();
+    const mStart   = `${currentYear}-${mm}-01`;
+    const mEnd     = `${currentYear}-${mm}-${String(lastDate).padStart(2,'0')}`;
+    const mTrips   = visible.filter(t => t.start <= mEnd && t.end >= mStart);
+
+    html += `<div class="mini-month">
+      <div class="mini-month-title">${MONTHS[m]}</div>
+      <div class="mini-cal-grid">`;
+
+    html += DAYS.map(d => `<div class="mini-day-name">${d[0]}</div>`).join('');
+
+    let cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push({ day: '', other: true });
+    for (let d = 1; d <= lastDate; d++) {
+      const dateStr = `${currentYear}-${mm}-${String(d).padStart(2,'0')}`;
+      cells.push({ date: dateStr, day: d, other: false });
+    }
+    while (cells.length % 7 !== 0) cells.push({ day: '', other: true });
+
+    cells.forEach(cell => {
+      if (cell.other || !cell.day) { html += `<div class="mini-cell other-month">${cell.day||''}</div>`; return; }
+      const isToday    = cell.date === today;
+      const eventsHere = mTrips.filter(t => t.start <= cell.date && t.end >= cell.date);
+      const ev         = eventsHere[0];
+      const bg         = ev ? `background:${ev.color}` : '';
+      const click      = ev ? `onclick="showModal('${ev.id}')"` : '';
+      const title      = eventsHere.length ? `title="${eventsHere.map(t=>esc(t.dest)).join(', ')}"` : '';
+      html += `<div class="mini-cell ${isToday?'today':''} ${ev?'has-event':''}" style="${bg}" ${click} ${title}>${cell.day}</div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('calGrid').innerHTML = html;
+  renderLegend(visible);
+}
+
+function renderLegend(visible) {
+  const seen = {};
+  visible.forEach(t => { seen[t.id] = t; });
+  const el    = document.getElementById('legend');
+  const items = Object.values(seen);
+  const label = calView === 'yearly' ? 'this year' : 'this month';
+  if (!items.length) { el.innerHTML = `<span style="color:#a0aec0;font-size:.82rem">No trips ${label}</span>`; return; }
+  el.innerHTML = items.map(t => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${t.color}"></div>
+      ${esc(t.dest)} (${fmt(t.start)}–${fmt(t.end)})
+    </div>
+  `).join('');
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Modal
+// ──────────────────────────────────────────────────────────────
+function showModal(id) {
+  const t = trips.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById('modalHeader').style.background = t.color;
+  document.getElementById('modalTitle').textContent = '✈️ ' + t.dest;
+
+  let bullets = `
+    <li><span class="modal-date-line">📅 ${fmt(t.start)} → ${fmt(t.end)}</span></li>
+    <li><span class="modal-dest-line">✈️ ${esc(t.dest)}</span></li>
+  `;
+  if (t.details)       bullets += `<li><span class="modal-detail-line">📋 ${esc(t.details)}</span></li>`;
+  if (t.staff.length)  bullets += `<li><span class="modal-people-line">👤 Staff: ${t.staff.map(esc).join(', ')}</span></li>`;
+  if (t.guests.length) bullets += `<li><span class="modal-people-line">🤝 Guests: ${t.guests.map(esc).join(', ')}</span></li>`;
+
+  document.getElementById('modalBullets').innerHTML = bullets;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay') || e.currentTarget.classList.contains('modal-close')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Helpers
+// ──────────────────────────────────────────────────────────────
+function fmt(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  return `${d} ${MONTHS[parseInt(m,10)-1].slice(0,3)} ${y}`;
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Init
+// ──────────────────────────────────────────────────────────────
+loadTrips();
+
+// ──────────────────────────────────────────────────────────────
+//  Staff travel list (next 3 months)
+// ──────────────────────────────────────────────────────────────
+function renderStaffTravel() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const limit = new Date(today);
+  limit.setMonth(limit.getMonth() + 3);
+
+  const todayStr = today.toISOString().slice(0,10);
+  const limitStr = limit.toISOString().slice(0,10);
+
+  document.getElementById('staffTravelWindow').textContent =
+    `Showing trips between ${fmt(todayStr)} and ${fmt(limitStr)}`;
+
+  const upcoming = trips.filter(t => t.end >= todayStr && t.start <= limitStr);
+
+  const staffMap = {};
+  upcoming.forEach(t => {
+    t.staff.forEach(name => {
+      if (!staffMap[name]) staffMap[name] = [];
+      staffMap[name].push(t);
+    });
+  });
+
+  const sortedStaff = Object.keys(staffMap).sort();
+  const el = document.getElementById('staffTravelList');
+
+  if (!sortedStaff.length) {
+    el.innerHTML = '<div class="empty-state">No staff have upcoming travel in the next 3 months.</div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="staff-travel-grid">` +
+    sortedStaff.map(name => {
+      const staffTrips = staffMap[name].slice().sort((a,b) => a.start.localeCompare(b.start));
+      return `
+        <div class="staff-travel-card">
+          <div class="staff-travel-card-header">👤 ${esc(name)}</div>
+          ${staffTrips.map(t => `
+            <div class="staff-trip-row" onclick="showModal('${t.id}')">
+              <span class="staff-trip-dot" style="background:${t.color}"></span>
+              <span class="staff-trip-dest">${esc(t.dest)}</span>
+              <span class="staff-trip-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
+            </div>
+          `).join('')}
+        </div>`;
+    }).join('') +
+  `</div>`;
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+// ── Date pickers ──────────────────────────────────────────────
+const fpStart = flatpickr('#startDate', {
+  dateFormat : 'Y-m-d',
+  altInput   : true,
+  altFormat  : 'j M Y',
+  disableMobile: false,
+  onChange(dates) {
+    if (dates[0]) fpEnd.set('minDate', dates[0]);
+  }
+});
+
+const fpEnd = flatpickr('#endDate', {
+  dateFormat : 'Y-m-d',
+  altInput   : true,
+  altFormat  : 'j M Y',
+  disableMobile: false,
+});
+</script>
+</body>
+</html>
