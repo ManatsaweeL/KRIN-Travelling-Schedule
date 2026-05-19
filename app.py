@@ -5,20 +5,31 @@ import json
 import os
 
 app = Flask(__name__)
-app.secret_key  = os.environ.get('SECRET_KEY', 'krin-dev-secret-key')
-SITE_PASSWORD   = os.environ.get('SITE_PASSWORD', 'KG12345678')
-DATABASE        = os.environ.get('DATABASE_PATH', 'trips.db')
+app.secret_key   = os.environ.get('SECRET_KEY', 'krin-dev-secret-key')
+VIEW_PASSWORD    = os.environ.get('VIEW_PASSWORD',  'KG12345678')
+ADMIN_PASSWORD   = os.environ.get('ADMIN_PASSWORD', 'KG123456789')
+DATABASE         = os.environ.get('DATABASE_PATH',  'trips.db')
 
 
-# ── Auth ──────────────────────────────────────────────────────
+# ── Auth decorators ───────────────────────────────────────────
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get('authenticated'):
+        if not session.get('role'):
             return redirect('/login')
         return f(*args, **kwargs)
     return decorated
 
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('role') != 'admin':
+            return jsonify({'error': 'View-only access'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── Login page ────────────────────────────────────────────────
 LOGIN_HTML = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,8 +115,12 @@ LOGIN_HTML = '''<!DOCTYPE html>
 def login():
     error = False
     if request.method == 'POST':
-        if request.form.get('password') == SITE_PASSWORD:
-            session['authenticated'] = True
+        pwd = request.form.get('password', '')
+        if pwd == ADMIN_PASSWORD:
+            session['role'] = 'admin'
+            return redirect('/')
+        elif pwd == VIEW_PASSWORD:
+            session['role'] = 'viewer'
             return redirect('/')
         error = True
     return render_template_string(LOGIN_HTML, error=error)
@@ -115,6 +130,12 @@ def login():
 def logout():
     session.clear()
     return redirect('/login')
+
+
+@app.route('/api/role')
+@login_required
+def get_role():
+    return jsonify({'role': session.get('role')})
 
 
 # ── DB ────────────────────────────────────────────────────────
@@ -173,6 +194,7 @@ def get_trips():
 
 @app.route('/api/trips', methods=['POST'])
 @login_required
+@admin_required
 def create_trip():
     d = request.get_json()
     conn = get_db()
@@ -191,6 +213,7 @@ def create_trip():
 
 @app.route('/api/trips/<trip_id>', methods=['PUT'])
 @login_required
+@admin_required
 def update_trip(trip_id):
     d = request.get_json()
     conn = get_db()
@@ -212,6 +235,7 @@ def update_trip(trip_id):
 
 @app.route('/api/trips/<trip_id>', methods=['DELETE'])
 @login_required
+@admin_required
 def delete_trip(trip_id):
     conn = get_db()
     conn.execute('DELETE FROM trips WHERE id=?', (trip_id,))

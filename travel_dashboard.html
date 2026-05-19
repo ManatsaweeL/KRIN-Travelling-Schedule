@@ -1038,7 +1038,26 @@ function esc(s) {
 // ──────────────────────────────────────────────────────────────
 //  Init
 // ──────────────────────────────────────────────────────────────
-loadTrips();
+// ──────────────────────────────────────────────────────────────
+//  Role-based UI
+// ──────────────────────────────────────────────────────────────
+async function initRole() {
+  const res  = await fetch('/api/role');
+  const data = await res.json();
+  if (data.role === 'viewer') {
+    // Hide add/edit form and all edit/delete buttons
+    document.getElementById('entryCard').style.display = 'none';
+    document.querySelectorAll('.trip-actions').forEach(el => el.style.display = 'none');
+    // Show a read-only badge in header
+    const badge = document.createElement('span');
+    badge.textContent = '👁 View Only';
+    badge.style.cssText = 'margin-left:12px;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:7px;padding:4px 12px;font-size:0.8rem;font-weight:600;';
+    document.querySelector('header h1').after(badge);
+  }
+  await loadTrips();
+}
+
+initRole();
 
 // ──────────────────────────────────────────────────────────────
 //  Staff travel list (next 3 months)
