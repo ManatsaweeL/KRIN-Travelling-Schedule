@@ -455,11 +455,21 @@
   .todo-form-item .todo-text { flex: 1; }
   .todo-form-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
 
-  .trip-todo-list { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
-  .trip-todo-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #4a5568; }
-  .trip-todo-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
-  .trip-todo-item input[type=checkbox] { accent-color: #2b6cb0; width: 12px; height: 12px; cursor: pointer; flex-shrink: 0; }
-  .trip-todo-item input[type=checkbox]:disabled { cursor: default; opacity: 0.6; }
+  /* ── To-Do Dashboard ── */
+  .todo-dashboard-trip { margin-bottom: 16px; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+  .todo-dashboard-trip:last-child { margin-bottom: 0; }
+  .todo-dashboard-header {
+    padding: 10px 16px; color: white;
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 0.92rem;
+  }
+  .todo-dashboard-header .td-dates { font-size: 0.78rem; font-weight: 400; opacity: 0.88; margin-left: auto; white-space: nowrap; }
+  .todo-dashboard-items { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; background: white; }
+  .todo-dashboard-item { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: #4a5568; padding: 3px 0; }
+  .todo-dashboard-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
+  .todo-dashboard-item input[type=checkbox] { accent-color: #2b6cb0; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+  .todo-dashboard-item input[type=checkbox]:disabled { cursor: default; opacity: 0.6; }
+  .todo-progress { font-size: 0.75rem; color: #718096; padding: 6px 16px 10px; background: white; }
 
   .modal-todo-list { list-style: none; padding: 0; margin-top: 6px; }
   .modal-todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 3px 0; }
@@ -521,7 +531,7 @@
     <div class="card">
       <div class="card-header">
         <span>🗂️</span>
-        <h2>All Travel Entries</h2>
+        <h2>Upcoming Trips</h2>
       </div>
       <div class="card-body">
         <div id="tripsList"></div>
@@ -600,6 +610,17 @@
     </div>
   </div>
 
+  <!-- ── TO-DO DASHBOARD ── -->
+  <div class="card">
+    <div class="card-header">
+      <span>📋</span>
+      <h2>To-Do Dashboard</h2>
+    </div>
+    <div class="card-body">
+      <div id="todoDashboard"></div>
+    </div>
+  </div>
+
   <!-- ── STAFF TRAVEL LIST ── -->
   <div class="card">
     <div class="card-header">
@@ -671,7 +692,46 @@ async function loadTrips() {
   }
   renderTripsList();
   renderCalendar();
+  renderTodoDashboard();
   renderStaffTravel();
+}
+
+// ──────────────────────────────────────────────────────────────
+//  To-Do Dashboard
+// ──────────────────────────────────────────────────────────────
+function renderTodoDashboard() {
+  const el = document.getElementById('todoDashboard');
+  if (!el) return;
+  const withTodos = [...trips]
+    .filter(t => t.todos && t.todos.length)
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  if (!withTodos.length) {
+    el.innerHTML = '<div class="empty-state">No to-do items added to any trip yet.</div>';
+    return;
+  }
+
+  el.innerHTML = withTodos.map(t => {
+    const done  = t.todos.filter(i => i.done).length;
+    const total = t.todos.length;
+    return `
+      <div class="todo-dashboard-trip">
+        <div class="todo-dashboard-header" style="background:${t.color}">
+          <span>✈️ ${esc(t.dest)}</span>
+          <span class="td-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
+        </div>
+        <div class="todo-dashboard-items">
+          ${t.todos.map((todo, idx) => `
+            <div class="todo-dashboard-item ${todo.done ? 'done' : ''}">
+              <input type="checkbox" ${todo.done ? 'checked' : ''}
+                ${userRole !== 'admin' ? 'disabled' : ''}
+                onchange="toggleTodo('${t.id}', ${idx})">
+              <span class="todo-text">${esc(todo.text)}</span>
+            </div>`).join('')}
+        </div>
+        <div class="todo-progress">${done} of ${total} completed</div>
+      </div>`;
+  }).join('');
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -921,34 +981,26 @@ function renderTripsList() {
     return;
   }
   const sorted = [...trips].sort((a,b) => a.start.localeCompare(b.start));
-  el.innerHTML = sorted.map(t => {
-    const todos = t.todos || [];
-    const todosHtml = todos.length ? `
-      <div class="trip-todo-list">
-        ${todos.map((todo, idx) => `
-          <div class="trip-todo-item ${todo.done ? 'done' : ''}">
-            <input type="checkbox" ${todo.done ? 'checked' : ''}
-              ${userRole !== 'admin' ? 'disabled' : ''}
-              onchange="toggleTodo('${t.id}', ${idx})"
-              onclick="event.stopPropagation()">
-            <span class="todo-text">${esc(todo.text)}</span>
-          </div>`).join('')}
-      </div>` : '';
-    return `
+  const today = new Date().toISOString().slice(0,10);
+  const upcoming = sorted.filter(t => t.end >= today);
+  if (!upcoming.length) {
+    el.innerHTML = '<div class="empty-state">No upcoming trips.</div>';
+    return;
+  }
+  el.innerHTML = upcoming.map(t => `
     <div class="trip-item" style="border-left-color:${t.color}">
       <div class="trip-info">
         <div class="trip-line date">📅 ${fmtShort(t.start)} – ${fmtShort(t.end)}</div>
         <div class="trip-line dest">✈️ ${esc(t.dest)}</div>
         ${t.staff.length  ? `<div class="trip-line staff">👤 ${[...t.staff].sort().map(esc).join(', ')}</div>` : ''}
         ${t.guests.length ? `<div class="trip-line guest">🤝 ${t.guests.map(esc).join(', ')}</div>` : ''}
-        ${todosHtml}
       </div>
       <div class="trip-actions">
         <button class="btn btn-secondary btn-sm" onclick="editTrip('${t.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTrip('${t.id}')">🗑️</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>
+  `).join('');
 }
 
 // ──────────────────────────────────────────────────────────────
