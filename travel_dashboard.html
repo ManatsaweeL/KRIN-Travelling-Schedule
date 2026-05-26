@@ -1123,11 +1123,19 @@ function renderYearly() {
       if (cell.other || !cell.day) { html += `<div class="mini-cell other-month">${cell.day||''}</div>`; return; }
       const isToday    = cell.date === today;
       const eventsHere = mTrips.filter(t => t.start <= cell.date && t.end >= cell.date);
-      const ev         = eventsHere[0];
-      const bg         = ev ? `background:${ev.color}` : '';
-      const click      = ev ? `onclick="showModal('${ev.id}')"` : '';
-      const title      = eventsHere.length ? `title="${eventsHere.map(t=>esc(t.dest)).join(', ')}"` : '';
-      html += `<div class="mini-cell ${isToday?'today':''} ${ev?'has-event':''}" style="${bg}" ${click} ${title}>${cell.day}</div>`;
+      let bg = '', click = '';
+      if (eventsHere.length === 1) {
+        bg    = `background:${eventsHere[0].color}`;
+        click = `onclick="showModal('${eventsHere[0].id}')"`;
+      } else if (eventsHere.length === 2) {
+        bg    = `background:linear-gradient(to right,${eventsHere[0].color} 50%,${eventsHere[1].color} 50%)`;
+        click = `onclick="showModal('${eventsHere[0].id}')"`;
+      } else if (eventsHere.length >= 3) {
+        bg    = `background:linear-gradient(to right,${eventsHere[0].color} 33.33%,${eventsHere[1].color} 33.33%,${eventsHere[1].color} 66.66%,${eventsHere[2].color} 66.66%)`;
+        click = `onclick="showModal('${eventsHere[0].id}')"`;
+      }
+      const title = eventsHere.length ? `title="${eventsHere.map(t=>esc(t.dest)).join(', ')}"` : '';
+      html += `<div class="mini-cell ${isToday?'today':''} ${eventsHere.length?'has-event':''}" style="${bg}" ${click} ${title}>${cell.day}</div>`;
     });
 
     html += `</div></div>`;
