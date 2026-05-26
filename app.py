@@ -156,9 +156,15 @@ def init_db():
             details     TEXT DEFAULT '',
             staff       TEXT DEFAULT '[]',
             guests      TEXT DEFAULT '[]',
-            color       TEXT DEFAULT '#3182ce'
+            color       TEXT DEFAULT '#3182ce',
+            todos       TEXT DEFAULT '[]'
         )
     ''')
+    # Migration: add todos column to existing tables
+    try:
+        conn.execute("ALTER TABLE trips ADD COLUMN todos TEXT DEFAULT '[]'")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 
@@ -173,6 +179,7 @@ def row_to_dict(r):
         'staff':   json.loads(r['staff']),
         'guests':  json.loads(r['guests']),
         'color':   r['color'],
+        'todos':   json.loads(r['todos'] or '[]'),
     }
 
 
@@ -199,12 +206,13 @@ def create_trip():
     d = request.get_json()
     conn = get_db()
     conn.execute(
-        'INSERT INTO trips VALUES (?,?,?,?,?,?,?,?)',
+        'INSERT INTO trips VALUES (?,?,?,?,?,?,?,?,?)',
         (d['id'], d['start'], d['end'], d['dest'],
          d.get('details', ''),
          json.dumps(d.get('staff', [])),
          json.dumps(d.get('guests', [])),
-         d['color'])
+         d['color'],
+         json.dumps(d.get('todos', [])))
     )
     conn.commit()
     conn.close()
@@ -220,13 +228,15 @@ def update_trip(trip_id):
     conn.execute(
         '''UPDATE trips
            SET start_date=?, end_date=?, dest=?, details=?,
-               staff=?, guests=?, color=?
+               staff=?, guests=?, color=?, todos=?
            WHERE id=?''',
         (d['start'], d['end'], d['dest'],
          d.get('details', ''),
          json.dumps(d.get('staff', [])),
          json.dumps(d.get('guests', [])),
-         d['color'], trip_id)
+         d['color'],
+         json.dumps(d.get('todos', [])),
+         trip_id)
     )
     conn.commit()
     conn.close()

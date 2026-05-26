@@ -442,6 +442,29 @@
     display: inline-block;
   }
 
+  /* ── To-Do / Checklist ── */
+  .todo-input-row { display: flex; gap: 8px; }
+  .todo-input-row input { flex: 1; }
+  .todo-form-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .todo-form-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.88rem; padding: 5px 10px;
+    background: #f7fafc; border-radius: 6px;
+  }
+  .todo-form-item input[type=checkbox] { accent-color: #2b6cb0; width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+  .todo-form-item .todo-text { flex: 1; }
+  .todo-form-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
+
+  .staff-trip-todos { padding: 4px 14px 10px 36px; background: #f7fafc; border-bottom: 1px solid #f0f4f8; }
+  .staff-todo-item { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; padding: 3px 0; color: #4a5568; }
+  .staff-todo-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
+  .staff-todo-item input[type=checkbox] { accent-color: #2b6cb0; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+  .staff-todo-item input[type=checkbox]:disabled { cursor: default; opacity: 0.6; }
+
+  .modal-todo-list { list-style: none; padding: 0; margin-top: 6px; }
+  .modal-todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 3px 0; }
+  .modal-todo-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
+
   @media (max-width: 640px) {
     .form-grid { grid-template-columns: 1fr; }
     .form-group.full { grid-column: 1; }
@@ -558,6 +581,15 @@
           <span class="hint">Press Enter or click Add after each name</span>
         </div>
 
+        <div class="form-group full">
+          <label>To-Do / Checklist</label>
+          <div class="todo-input-row">
+            <input type="text" id="todoInput" placeholder="Type a checklist item…">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addTodoItem()">Add</button>
+          </div>
+          <div class="todo-form-list" id="todoFormList"></div>
+          <span class="hint">Items to prepare or check off for this trip</span>
+        </div>
 
       </div>
 
@@ -605,6 +637,8 @@ let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
 let selectedStaff = [];   // names chosen from dropdown
 let guestList    = [];    // free-text guest names
+let todoItems    = [];    // {text, done} checklist items
+let userRole     = 'viewer';
 
 const AUTO_COLORS = [
   '#e53e3e','#3182ce','#38a169','#d69e2e','#805ad5',
@@ -727,6 +761,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('guestInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); addGuest(); }
   });
+  document.getElementById('todoInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addTodoItem(); }
+  });
 });
 
 function renderGuestTags() {
@@ -741,6 +778,53 @@ function renderGuestTags() {
 function removeGuest(idx) {
   guestList.splice(idx, 1);
   renderGuestTags();
+}
+
+// ──────────────────────────────────────────────────────────────
+//  To-Do / Checklist
+// ──────────────────────────────────────────────────────────────
+function addTodoItem() {
+  const input = document.getElementById('todoInput');
+  const val   = input.value.trim();
+  if (!val) return;
+  todoItems.push({ text: val, done: false });
+  renderTodoFormList();
+  input.value = '';
+  input.focus();
+}
+
+function toggleTodoForm(idx) {
+  todoItems[idx].done = !todoItems[idx].done;
+  renderTodoFormList();
+}
+
+function removeTodoItem(idx) {
+  todoItems.splice(idx, 1);
+  renderTodoFormList();
+}
+
+function renderTodoFormList() {
+  const el = document.getElementById('todoFormList');
+  if (!todoItems.length) { el.innerHTML = ''; return; }
+  el.innerHTML = todoItems.map((item, i) => `
+    <div class="todo-form-item ${item.done ? 'done' : ''}">
+      <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTodoForm(${i})">
+      <span class="todo-text">${esc(item.text)}</span>
+      <span class="remove" onclick="removeTodoItem(${i})">×</span>
+    </div>
+  `).join('');
+}
+
+async function toggleTodo(tripId, idx) {
+  const trip = trips.find(t => t.id === tripId);
+  if (!trip) return;
+  trip.todos[idx].done = !trip.todos[idx].done;
+  await fetch(`/api/trips/${tripId}`, {
+    method:  'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(trip)
+  });
+  await loadTrips();
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -762,6 +846,7 @@ async function saveTrip() {
     details: document.getElementById('details').value.trim(),
     staff:   [...selectedStaff],
     guests:  [...guestList],
+    todos:   [...todoItems],
     color:   editingId ? trips.find(t => t.id === editingId).color : autoColor()
   };
 
@@ -793,9 +878,11 @@ function editTrip(id) {
   document.getElementById('details').value     = t.details;
   selectedStaff = [...t.staff];
   guestList     = [...t.guests];
+  todoItems     = [...(t.todos || [])];
   renderStaffTags();
   updateStaffTriggerLabel();
   renderGuestTags();
+  renderTodoFormList();
   document.getElementById('formTitle').textContent = 'Edit Travel Entry';
   document.getElementById('entryCard').scrollIntoView({ behavior: 'smooth' });
 }
@@ -810,10 +897,11 @@ async function deleteTrip(id) {
 function resetForm() {
   fpStart.clear(); fpEnd.clear();
   ['destination','details'].forEach(id => document.getElementById(id).value = '');
-  selectedStaff = []; guestList = [];
+  selectedStaff = []; guestList = []; todoItems = [];
   renderStaffTags();
   updateStaffTriggerLabel();
   renderGuestTags();
+  renderTodoFormList();
   editingId = null;
   document.getElementById('formTitle').textContent = 'Add Travel Entry';
 }
@@ -1015,6 +1103,18 @@ function showModal(id) {
   if (t.details)       bullets += `<li><span class="modal-detail-line">📋 ${esc(t.details)}</span></li>`;
   if (t.staff.length)  bullets += `<li><span class="modal-people-line">👤 Staff: ${t.staff.map(esc).join(', ')}</span></li>`;
   if (t.guests.length) bullets += `<li><span class="modal-people-line">🤝 Guests: ${t.guests.map(esc).join(', ')}</span></li>`;
+  const todos = t.todos || [];
+  if (todos.length) bullets += `
+    <li>
+      <span class="modal-people-line" style="font-weight:700">✅ Checklist:</span>
+      <ul class="modal-todo-list">
+        ${todos.map(todo => `
+          <li class="modal-todo-item ${todo.done ? 'done' : ''}">
+            <span>${todo.done ? '☑' : '☐'}</span>
+            <span class="todo-text">${esc(todo.text)}</span>
+          </li>`).join('')}
+      </ul>
+    </li>`;
 
   document.getElementById('modalBullets').innerHTML = bullets;
   document.getElementById('modalOverlay').classList.add('open');
@@ -1046,6 +1146,7 @@ function esc(s) {
 async function initRole() {
   const res  = await fetch('/api/role');
   const data = await res.json();
+  userRole = data.role;
   if (data.role === 'viewer') {
     // Hide add/edit form and all edit/delete buttons
     document.getElementById('entryCard').style.display = 'none';
@@ -1100,13 +1201,27 @@ function renderStaffTravel() {
       return `
         <div class="staff-travel-card">
           <div class="staff-travel-card-header">👤 ${esc(name)}</div>
-          ${staffTrips.map(t => `
-            <div class="staff-trip-row" onclick="showModal('${t.id}')">
-              <span class="staff-trip-dot" style="background:${t.color}"></span>
-              <span class="staff-trip-dest">${esc(t.dest)}</span>
-              <span class="staff-trip-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
-            </div>
-          `).join('')}
+          ${staffTrips.map(t => {
+        const todos = t.todos || [];
+        const todosHtml = todos.length ? `
+          <div class="staff-trip-todos">
+            ${todos.map((todo, idx) => `
+              <div class="staff-todo-item ${todo.done ? 'done' : ''}">
+                <input type="checkbox" ${todo.done ? 'checked' : ''}
+                  ${userRole !== 'admin' ? 'disabled' : ''}
+                  onchange="toggleTodo('${t.id}', ${idx})"
+                  onclick="event.stopPropagation()">
+                <span class="todo-text">${esc(todo.text)}</span>
+              </div>`).join('')}
+          </div>` : '';
+        return `
+          <div class="staff-trip-row" onclick="showModal('${t.id}')">
+            <span class="staff-trip-dot" style="background:${t.color}"></span>
+            <span class="staff-trip-dest">${esc(t.dest)}</span>
+            <span class="staff-trip-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
+          </div>
+          ${todosHtml}`;
+      }).join('')}
         </div>`;
     }).join('') +
   `</div>`;
