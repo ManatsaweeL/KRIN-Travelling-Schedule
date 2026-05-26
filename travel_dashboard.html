@@ -455,11 +455,11 @@
   .todo-form-item .todo-text { flex: 1; }
   .todo-form-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
 
-  .staff-trip-todos { padding: 4px 14px 10px 36px; background: #f7fafc; border-bottom: 1px solid #f0f4f8; }
-  .staff-todo-item { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; padding: 3px 0; color: #4a5568; }
-  .staff-todo-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
-  .staff-todo-item input[type=checkbox] { accent-color: #2b6cb0; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
-  .staff-todo-item input[type=checkbox]:disabled { cursor: default; opacity: 0.6; }
+  .trip-todo-list { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
+  .trip-todo-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #4a5568; }
+  .trip-todo-item.done .todo-text { text-decoration: line-through; color: #a0aec0; }
+  .trip-todo-item input[type=checkbox] { accent-color: #2b6cb0; width: 12px; height: 12px; cursor: pointer; flex-shrink: 0; }
+  .trip-todo-item input[type=checkbox]:disabled { cursor: default; opacity: 0.6; }
 
   .modal-todo-list { list-style: none; padding: 0; margin-top: 6px; }
   .modal-todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 3px 0; }
@@ -921,20 +921,34 @@ function renderTripsList() {
     return;
   }
   const sorted = [...trips].sort((a,b) => a.start.localeCompare(b.start));
-  el.innerHTML = sorted.map(t => `
+  el.innerHTML = sorted.map(t => {
+    const todos = t.todos || [];
+    const todosHtml = todos.length ? `
+      <div class="trip-todo-list">
+        ${todos.map((todo, idx) => `
+          <div class="trip-todo-item ${todo.done ? 'done' : ''}">
+            <input type="checkbox" ${todo.done ? 'checked' : ''}
+              ${userRole !== 'admin' ? 'disabled' : ''}
+              onchange="toggleTodo('${t.id}', ${idx})"
+              onclick="event.stopPropagation()">
+            <span class="todo-text">${esc(todo.text)}</span>
+          </div>`).join('')}
+      </div>` : '';
+    return `
     <div class="trip-item" style="border-left-color:${t.color}">
       <div class="trip-info">
         <div class="trip-line date">📅 ${fmtShort(t.start)} – ${fmtShort(t.end)}</div>
         <div class="trip-line dest">✈️ ${esc(t.dest)}</div>
         ${t.staff.length  ? `<div class="trip-line staff">👤 ${[...t.staff].sort().map(esc).join(', ')}</div>` : ''}
         ${t.guests.length ? `<div class="trip-line guest">🤝 ${t.guests.map(esc).join(', ')}</div>` : ''}
+        ${todosHtml}
       </div>
       <div class="trip-actions">
         <button class="btn btn-secondary btn-sm" onclick="editTrip('${t.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTrip('${t.id}')">🗑️</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1201,27 +1215,13 @@ function renderStaffTravel() {
       return `
         <div class="staff-travel-card">
           <div class="staff-travel-card-header">👤 ${esc(name)}</div>
-          ${staffTrips.map(t => {
-        const todos = t.todos || [];
-        const todosHtml = todos.length ? `
-          <div class="staff-trip-todos">
-            ${todos.map((todo, idx) => `
-              <div class="staff-todo-item ${todo.done ? 'done' : ''}">
-                <input type="checkbox" ${todo.done ? 'checked' : ''}
-                  ${userRole !== 'admin' ? 'disabled' : ''}
-                  onchange="toggleTodo('${t.id}', ${idx})"
-                  onclick="event.stopPropagation()">
-                <span class="todo-text">${esc(todo.text)}</span>
-              </div>`).join('')}
-          </div>` : '';
-        return `
-          <div class="staff-trip-row" onclick="showModal('${t.id}')">
-            <span class="staff-trip-dot" style="background:${t.color}"></span>
-            <span class="staff-trip-dest">${esc(t.dest)}</span>
-            <span class="staff-trip-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
-          </div>
-          ${todosHtml}`;
-      }).join('')}
+          ${staffTrips.map(t => `
+            <div class="staff-trip-row" onclick="showModal('${t.id}')">
+              <span class="staff-trip-dot" style="background:${t.color}"></span>
+              <span class="staff-trip-dest">${esc(t.dest)}</span>
+              <span class="staff-trip-dates">${fmt(t.start)} – ${fmt(t.end)}</span>
+            </div>
+          `).join('')}
         </div>`;
     }).join('') +
   `</div>`;
